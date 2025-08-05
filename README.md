@@ -21,7 +21,10 @@ personal-nrf-utils/
 │   └── bluetooth/        # Nordic BLE service headers
 ├── modules/              # Reusable utility modules
 │   ├── gpio_helpers/     # GPIO control abstractions
-│   ├── ble_common/       # BLE service wrappers
+│   ├── ble_common/       # BLE initialization and service management
+│   │   ├── ble_init.h    # BLE stack initialization API
+│   │   ├── ble_init.c    # BLE initialization implementation
+│   │   └── example_usage.c # Usage examples and patterns
 │   └── uart_helpers/     # UART communication utilities
 ├── docs/                 # Documentation and notes
 └── README.md
@@ -57,7 +60,7 @@ These headers provide IntelliSense support for tablet development without requir
 Copy specific modules from this repo into your project:
 ```c
 #include "gpio_helpers/led_controller.h"
-#include "ble_common/service_manager.h"
+#include "ble_common/ble_init.h"
 ```
 
 ### Method 2: Git Submodule
@@ -65,6 +68,63 @@ Add as submodule to your project:
 ```bash
 git submodule add https://github.com/yourusername/personal-nrf-utils.git utils
 ```
+
+### BLE Module Usage Example
+```c
+#include "ble_common/ble_init.h"
+
+/* Configure BLE initialization */
+struct ble_init_config ble_config = {
+    .device_name = "My_nRF_Device",
+    .adv_interval_ms = 100,
+    .connectable = true,
+    .enable_nus = true,  /* Nordic UART Service */
+};
+
+/* Set up event callbacks */
+static const struct ble_event_callbacks ble_callbacks = {
+    .ready = on_ble_ready,
+    .connected = on_connected,
+    .disconnected = on_disconnected,
+    .nus_data_received = on_data_received,
+};
+
+/* Initialize BLE stack */
+int err = ble_init(&ble_config, &ble_callbacks);
+```
+
+## Module Documentation
+
+### BLE Common Module (`modules/ble_common/`)
+
+The BLE initialization module provides a high-level API for setting up Bluetooth Low Energy functionality on Nordic nRF chips. It handles:
+
+- **Bluetooth Stack Initialization**: Automated setup of the Zephyr Bluetooth stack
+- **Advertising Management**: Configurable advertising with device name and intervals  
+- **Nordic UART Service (NUS)**: Optional UART-over-BLE service for data exchange
+- **Connection Management**: Automatic tracking of multiple BLE connections
+- **Event Callbacks**: Clean callback system for BLE events
+
+#### Features
+- Simple one-function initialization
+- Automatic advertising restart after disconnection
+- Support for multiple simultaneous connections
+- Built-in logging and error handling
+- Configurable device name and advertising parameters
+- Optional NUS service with data echo capabilities
+
+#### Dependencies
+- Zephyr RTOS Bluetooth subsystem
+- Nordic UART Service (for NUS functionality)
+- Zephyr settings subsystem (optional, for persistent storage)
+
+#### Example Usage
+See `modules/ble_common/example_usage.c` for complete examples including:
+- Basic BLE setup with callbacks
+- Minimal configuration setup
+- Manual advertising control
+- Data transmission via NUS
+- Connection management
 
 ## Module Development Guidelines
 

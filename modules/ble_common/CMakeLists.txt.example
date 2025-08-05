@@ -1,0 +1,69 @@
+#
+# Copyright (c) 2025 Personal NRF Utils
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+#
+# Example CMakeLists.txt showing how to integrate the ble_common module
+# into your Nordic nRF project.
+#
+# This assumes the personal-nrf-utils repository is available either as:
+# 1. A git submodule in your project
+# 2. Copied into your project source tree
+# 3. Available as a separate directory
+#
+
+# Example 1: Module copied into project source tree
+# target_sources(app PRIVATE
+#     src/main.c
+#     modules/ble_common/ble_init.c
+# )
+# 
+# target_include_directories(app PRIVATE
+#     modules/ble_common
+# )
+
+# Example 2: Module as git submodule in utils/ directory
+# target_sources(app PRIVATE
+#     src/main.c
+#     utils/modules/ble_common/ble_init.c
+# )
+# 
+# target_include_directories(app PRIVATE
+#     utils/modules/ble_common
+# )
+
+# Example 3: Module in external directory with environment variable
+# set(NRF_UTILS_PATH $ENV{NRF_UTILS_PATH})
+# if(NRF_UTILS_PATH)
+#     target_sources(app PRIVATE
+#         src/main.c
+#         ${NRF_UTILS_PATH}/modules/ble_common/ble_init.c
+#     )
+#     
+#     target_include_directories(app PRIVATE
+#         ${NRF_UTILS_PATH}/modules/ble_common
+#     )
+# endif()
+
+# Example 4: Creating a static library for the module
+add_library(ble_common STATIC
+    modules/ble_common/ble_init.c
+)
+
+target_include_directories(ble_common PUBLIC
+    modules/ble_common
+)
+
+# Link against required Zephyr libraries
+target_link_libraries(ble_common PRIVATE
+    zephyr
+)
+
+# Link the library to your main application
+target_link_libraries(app PRIVATE ble_common)
+
+# If using Nordic UART Service, ensure it's available
+# This may require additional Nordic SDK configuration
+# zephyr_library_sources_ifdef(CONFIG_BT_NUS bluetooth/services/nus.c)
