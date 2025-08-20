@@ -25,6 +25,12 @@ personal-nrf-utils/
 │   │   ├── ble_init.h    # BLE stack initialization API
 │   │   ├── ble_init.c    # BLE initialization implementation
 │   │   └── example_usage.c # Usage examples and patterns
+│   ├── nrf_utils/        # Nordic chip utility functions
+│   │   ├── nrf_utils.h   # Battery, temperature, system info API
+│   │   └── nrf_utils.c   # Utility functions implementation
+│   ├── cmd_parser/       # Command line parser for BLE serial
+│   │   ├── cmd_parser.h  # Command processing API
+│   │   └── cmd_parser.c  # Command parser implementation
 │   └── uart_helpers/     # UART communication utilities
 ├── docs/                 # Documentation and notes
 └── README.md
@@ -72,6 +78,12 @@ git submodule add https://github.com/yourusername/personal-nrf-utils.git utils
 ### BLE Module Usage Example
 ```c
 #include "ble_common/ble_init.h"
+#include "nrf_utils/nrf_utils.h"
+#include "cmd_parser/cmd_parser.h"
+
+/* Initialize all modules */
+nrf_utils_init();
+cmd_parser_init();
 
 /* Configure BLE initialization */
 struct ble_init_config ble_config = {
@@ -86,7 +98,7 @@ static const struct ble_event_callbacks ble_callbacks = {
     .ready = on_ble_ready,
     .connected = on_connected,
     .disconnected = on_disconnected,
-    .nus_data_received = on_data_received,
+    .nus_data_received = cmd_parser_process, /* Process commands */
 };
 
 /* Initialize BLE stack */
@@ -125,6 +137,65 @@ See `modules/ble_common/example_usage.c` for complete examples including:
 - Manual advertising control
 - Data transmission via NUS
 - Connection management
+
+### nRF Utils Module (`modules/nrf_utils/`)
+
+The nRF utilities module provides common system functions for Nordic nRF chips:
+
+- **Battery Monitoring**: Read battery voltage and calculate percentage
+- **Temperature Reading**: Access internal temperature sensor
+- **System Information**: Get board name, SoC info, uptime, memory stats
+- **Power Management**: System reset and deep sleep functions
+
+#### Features
+- ADC-based battery voltage monitoring with percentage calculation
+- Internal temperature sensor access
+- System uptime and memory usage tracking
+- Clean API for common system information
+- Power management utilities
+
+#### Dependencies
+- Zephyr ADC subsystem (for battery monitoring)
+- Zephyr sensor subsystem (for temperature)
+- Zephyr system APIs
+
+### Command Parser Module (`modules/cmd_parser/`)
+
+The command parser module provides a command-line interface over BLE NUS:
+
+- **Serial Command Processing**: Parse commands received via BLE
+- **Built-in Commands**: System status, battery info, LED control, etc.
+- **Extensible Design**: Easy to add new commands
+- **Response Handling**: Automatic response transmission over BLE
+
+#### Available Commands
+- `help` - Show all available commands
+- `status` - Complete system status (uptime, battery, temperature, connections)
+- `battery` - Detailed battery information
+- `temp` - Current temperature reading
+- `info` - System information (board, SoC, memory)
+- `uptime` - Formatted uptime display
+- `led on/off/toggle` - LED control
+- `echo <text>` - Echo test
+- `reset` - System reset
+
+#### Features
+- Line-buffered command processing
+- Automatic response generation
+- Memory-efficient command parsing
+- Extensible command table
+- Integration with nRF utils for system info
+
+### Complete Test Application
+
+The included `main.c` demonstrates a complete test application featuring:
+
+- **Full System Integration**: All modules working together
+- **BLE Serial Interface**: Connect with Android/iOS BLE terminal apps
+- **Interactive Commands**: Test all system functions via BLE commands
+- **Automatic Status Updates**: Periodic status reports every 10 seconds
+- **LED Indicators**: Visual connection status feedback
+- **Production-Ready Structure**: Clean separation of concerns
 
 ## Module Development Guidelines
 
