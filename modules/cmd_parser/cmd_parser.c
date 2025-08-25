@@ -31,6 +31,7 @@ static int cmd_uptime(const char *args, char *response, size_t response_size);
 static int cmd_reset(const char *args, char *response, size_t response_size);
 static int cmd_led(const char *args, char *response, size_t response_size);
 static int cmd_echo(const char *args, char *response, size_t response_size);
+static int cmd_ipc_test(const char *args, char *response, size_t response_size);
 
 /* Command table */
 static const struct cmd_entry commands[] = {
@@ -43,6 +44,7 @@ static const struct cmd_entry commands[] = {
     {"reset", "Reset the system", cmd_reset},
     {"led", "Control LED (on|off|toggle)", cmd_led},
     {"echo", "Echo back the arguments", cmd_echo},
+    {"ipc", "Test IPC communication with network core", cmd_ipc_test},
 };
 
 #define NUM_COMMANDS (sizeof(commands) / sizeof(commands[0]))
@@ -77,13 +79,26 @@ static int cmd_status(const char *args, char *response, size_t response_size)
     struct nrf_battery_status battery;
     int temp = nrf_get_temperature_celsius();
     uint32_t uptime = nrf_get_uptime_ms();
-    uint8_t conn_count = ble_get_connection_count();
+    enum ble_connection_state ble_state = ble_get_connection_state();
     
     int pos = 0;
     pos += snprintf(response + pos, response_size - pos, "=== System Status ===\n");
     pos += snprintf(response + pos, response_size - pos, "Uptime: %u.%03u seconds\n", 
                    uptime / 1000, uptime % 1000);
-    pos += snprintf(response + pos, response_size - pos, "BLE connections: %u\n", conn_count);
+    
+    /* BLE status for nRF5340 */
+    const char *ble_state_str;
+    switch (ble_state) {
+    case BLE_CONNECTED: ble_state_str = "Connected"; break;
+    case BLE_ADVERTISING: ble_state_str = "Advertising"; break;
+    case BLE_DISCONNECTED: ble_state_str = "Disconnected"; break;
+    case BLE_IPC_ERROR: ble_state_str = "IPC Error"; break;
+    default: ble_state_str = "Unknown"; break;
+    }
+    
+    pos += snprintf(response + pos, response_size - pos, "BLE state: %s\n", ble_state_str);
+    pos += snprintf(response + pos, response_size - pos, "IPC ready: %s\n", 
+                   ble_is_ipc_ready() ? "Yes" : "No");
     
     if (nrf_get_battery_status(&battery) == 0) {
         pos += snprintf(response + pos, response_size - pos, "Battery: %u%% (%u mV)\n",
@@ -215,6 +230,23 @@ static int cmd_echo(const char *args, char *response, size_t response_size)
     return 0;
 }
 
+static int cmd_ipc_test(const char *args, char *response, size_t response_size)
+{
+    if (!ble_is_ipc_ready()) {
+        snprintf(response, response_size, "IPC not ready - network core communication failed\n");
+        return -ENOTCONN;
+    }
+    
+    int ret = ble_test_ipc_communication();
+    if (ret == 0) {
+        snprintf(response, response_size, "IPC test message sent to network core\n");
+    } else {
+        snprintf(response, response_size, "IPC test failed (err %d)\n", ret);
+    }
+    
+    return ret;
+}
+
 static int execute_command(const char *cmd_line, char *response, size_t response_size)
 {
     char *cmd_name;
@@ -254,7 +286,7 @@ static int execute_command(const char *cmd_line, char *response, size_t response
     return -ENOENT;
 }
 
-int cmd_parser_process(struct bt_conn *conn, const uint8_t *data, uint16_t len)
+static int cmd_parser_process(struct bt_conn *conn, const uint8_t *data, uint16_t len)
 {
     char response[CMD_RESPONSE_MAX_LEN];
     
@@ -272,9 +304,9 @@ int cmd_parser_process(struct bt_conn *conn, const uint8_t *data, uint16_t len)
                 /* Execute command */
                 int ret = execute_command(cmd_buffer, response, sizeof(response));
                 
-                /* Send response */
+                /* Send response via BLE IPC */
                 if (strlen(response) > 0) {
-                    ble_nus_send(conn, (uint8_t *)response, strlen(response));
+                    ble_send_data((uint8_t *)response, strlen(response));
                 }
                 
                 /* Reset buffer */
@@ -292,4 +324,12 @@ int cmd_parser_process(struct bt_conn *conn, const uint8_t *data, uint16_t len)
     }
     
     return 0;
+}
+
+int cmd_parser_process(struct bt_conn *conn, const uint8_t *data, uint16_t len)
+{
+    /* For nRF5340 app core, conn parameter is not used since BLE is on network core */
+    ARG_UNUSED(conn);
+    
+    return cmd_parser_process(NULL, data, len);
 }

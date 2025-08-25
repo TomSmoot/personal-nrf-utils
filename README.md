@@ -107,36 +107,44 @@ int err = ble_init(&ble_config, &ble_callbacks);
 
 ## Module Documentation
 
-### BLE Common Module (`modules/ble_common/`)
+### BLE Common Module (`modules/ble_common/`) - nRF5340 Application Core
 
-The BLE initialization module provides a high-level API for setting up Bluetooth Low Energy functionality on Nordic nRF chips. It handles:
+The BLE initialization module provides IPC-based BLE communication for nRF5340 application core. It handles:
 
-- **Bluetooth Stack Initialization**: Automated setup of the Zephyr Bluetooth stack
-- **Advertising Management**: Configurable advertising with device name and intervals  
-- **Nordic UART Service (NUS)**: Optional UART-over-BLE service for data exchange
-- **Connection Management**: Automatic tracking of multiple BLE connections
-- **Event Callbacks**: Clean callback system for BLE events
+- **IPC Communication Setup**: Communication with network core running BLE stack
+- **BLE Data Exchange**: Send/receive data via Inter-Processor Communication
+- **Connection State Management**: Track BLE connection status via IPC messages
+- **Event Callbacks**: Clean callback system for BLE events from network core
+
+#### nRF5340 Architecture
+- **Application Core**: Runs your main application with utilities and command processing
+- **Network Core**: Runs BLE stack (e.g., nRF BLE SPI example or custom BLE firmware)
+- **IPC Communication**: Structured message passing between cores for BLE operations
 
 #### Features
-- Simple one-function initialization
-- Automatic advertising restart after disconnection
-- Support for multiple simultaneous connections
-- Built-in logging and error handling
-- Configurable device name and advertising parameters
-- Optional NUS service with data echo capabilities
+- IPC-based BLE communication (no direct BLE stack access)
+- Automatic connection state synchronization with network core
+- Data transmission via IPC to network core BLE services
+- Built-in IPC health checking and error handling
+- Compatible with standard Nordic network core BLE examples
 
 #### Dependencies
-- Zephyr RTOS Bluetooth subsystem
-- Nordic UART Service (for NUS functionality)
-- Zephyr settings subsystem (optional, for persistent storage)
+- Zephyr IPC service subsystem
+- nRF5340 mailbox (MBOX) driver
+- Network core running compatible BLE firmware
+
+#### Network Core Setup
+Flash one of these to the network core:
+1. **nRF Connect SDK BLE samples** (e.g., peripheral_uart, ble_app_uart)
+2. **Custom BLE firmware** with IPC message handling
+3. **Nordic's standard BLE examples** adapted for IPC
 
 #### Example Usage
-See `modules/ble_common/example_usage.c` for complete examples including:
-- Basic BLE setup with callbacks
-- Minimal configuration setup
-- Manual advertising control
-- Data transmission via NUS
-- Connection management
+See `modules/ble_common/example_usage.c` and main.c for complete examples including:
+- IPC communication setup
+- BLE data transmission
+- Connection state monitoring
+- IPC health testing
 
 ### nRF Utils Module (`modules/nrf_utils/`)
 
@@ -170,13 +178,14 @@ The command parser module provides a command-line interface over BLE NUS:
 
 #### Available Commands
 - `help` - Show all available commands
-- `status` - Complete system status (uptime, battery, temperature, connections)
+- `status` - Complete system status (uptime, battery, temperature, IPC state)
 - `battery` - Detailed battery information
 - `temp` - Current temperature reading
 - `info` - System information (board, SoC, memory)
 - `uptime` - Formatted uptime display
 - `led on/off/toggle` - LED control
 - `echo <text>` - Echo test
+- `ipc` - Test IPC communication with network core
 - `reset` - System reset
 
 #### Features
@@ -186,16 +195,24 @@ The command parser module provides a command-line interface over BLE NUS:
 - Extensible command table
 - Integration with nRF utils for system info
 
-### Complete Test Application
+### Complete Test Application - nRF5340
 
-The included `main.c` demonstrates a complete test application featuring:
+The included `main.c` demonstrates a complete nRF5340 application core featuring:
 
-- **Full System Integration**: All modules working together
-- **BLE Serial Interface**: Connect with Android/iOS BLE terminal apps
-- **Interactive Commands**: Test all system functions via BLE commands
+- **nRF5340 Dual-Core Architecture**: Application core with IPC to network core BLE
+- **Full System Integration**: All modules working together via IPC
+- **BLE Serial Interface**: Connect with Android/iOS BLE terminal apps (via network core)
+- **Interactive Commands**: Test all system functions via BLE commands + IPC
 - **Automatic Status Updates**: Periodic status reports every 10 seconds
 - **LED Indicators**: Visual connection status feedback
-- **Production-Ready Structure**: Clean separation of concerns
+- **IPC Health Monitoring**: Built-in IPC communication testing
+- **Production-Ready Structure**: Clean separation of concerns for dual-core systems
+
+#### Setup Instructions
+1. **Network Core**: Flash nRF BLE SPI example or compatible BLE firmware
+2. **Application Core**: Build and flash this application
+3. **Connect via BLE**: Use Android BLE terminal app to connect and test commands
+4. **Monitor IPC**: Use `ipc` command to test inter-core communication
 
 ## Module Development Guidelines
 

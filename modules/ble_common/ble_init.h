@@ -9,21 +9,16 @@
 
 /**
  * @file
- * @brief BLE initialization module for Nordic nRF chips
+ * @brief BLE initialization module for Nordic nRF5340 application core
  *
- * This module provides comprehensive BLE initialization including:
- * - Bluetooth stack initialization
- * - Advertising setup
- * - Nordic UART Service (NUS) initialization
- * - Connection management
+ * This module provides BLE initialization for nRF5340 application core
+ * using IPC communication with the network core running BLE stack.
+ * 
+ * Network core should be running the nRF BLE SPI example or similar
+ * BLE-enabled firmware that provides BLE services via IPC.
  */
 
 #include <zephyr/types.h>
-#include <zephyr/bluetooth/bluetooth.h>
-#include <zephyr/bluetooth/conn.h>
-#include <zephyr/bluetooth/gatt.h>
-#include <zephyr/bluetooth/hci.h>
-#include <zephyr/bluetooth/uuid.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,10 +27,10 @@ extern "C" {
 /** @brief BLE initialization status codes */
 enum ble_init_status {
     BLE_INIT_STATUS_SUCCESS = 0,
-    BLE_INIT_STATUS_STACK_FAILED = -1,
-    BLE_INIT_STATUS_ADVERTISING_FAILED = -2,
-    BLE_INIT_STATUS_NUS_FAILED = -3,
-    BLE_INIT_STATUS_ALREADY_INITIALIZED = -4,
+    BLE_INIT_STATUS_IPC_FAILED = -1,
+    BLE_INIT_STATUS_TIMEOUT = -2,
+    BLE_INIT_STATUS_ALREADY_INITIALIZED = -3,
+    BLE_INIT_STATUS_NOT_SUPPORTED = -4,
 };
 
 /** @brief BLE connection state */
@@ -43,9 +38,10 @@ enum ble_connection_state {
     BLE_DISCONNECTED = 0,
     BLE_CONNECTED,
     BLE_ADVERTISING,
+    BLE_IPC_ERROR,
 };
 
-/** @brief BLE initialization configuration */
+/** @brief BLE initialization configuration for nRF5340 app core */
 struct ble_init_config {
     /** Device name for advertising (max 29 characters) */
     const char *device_name;
@@ -56,36 +52,33 @@ struct ble_init_config {
     /** Whether to enable connectable advertising */
     bool connectable;
     
-    /** Whether to initialize NUS service */
-    bool enable_nus;
+    /** Whether to enable UART-like service */
+    bool enable_uart_service;
 };
 
 /** @brief BLE event callbacks */
 struct ble_event_callbacks {
-    /** @brief Called when BLE stack is ready */
+    /** @brief Called when BLE IPC communication is ready */
     void (*ready)(void);
     
-    /** @brief Called when a device connects */
-    void (*connected)(struct bt_conn *conn);
+    /** @brief Called when a device connects (simulated) */
+    void (*connected)(void);
     
-    /** @brief Called when a device disconnects */
-    void (*disconnected)(struct bt_conn *conn, uint8_t reason);
+    /** @brief Called when a device disconnects (simulated) */
+    void (*disconnected)(uint8_t reason);
     
-    /** @brief Called when NUS data is received */
-    void (*nus_data_received)(struct bt_conn *conn, const uint8_t *data, uint16_t len);
+    /** @brief Called when data is received via IPC from network core */
+    void (*data_received)(const uint8_t *data, uint16_t len);
     
-    /** @brief Called when NUS data is sent */
-    void (*nus_data_sent)(struct bt_conn *conn);
-    
-    /** @brief Called when NUS notifications are enabled/disabled */
-    void (*nus_send_enabled)(bool enabled);
+    /** @brief Called when data transmission is complete */
+    void (*data_sent)(void);
 };
 
 /**
- * @brief Initialize BLE stack and services
+ * @brief Initialize BLE communication via IPC with network core
  *
- * This function initializes the Bluetooth stack, sets up advertising,
- * and optionally initializes the Nordic UART Service.
+ * This function sets up IPC communication with the network core
+ * which should be running BLE stack firmware.
  *
  * @param config Configuration for BLE initialization
  * @param callbacks Event callbacks (can be NULL)
@@ -95,59 +88,35 @@ struct ble_event_callbacks {
 int ble_init(const struct ble_init_config *config, const struct ble_event_callbacks *callbacks);
 
 /**
- * @brief Start advertising
+ * @brief Send data to network core for BLE transmission
  *
- * @return 0 on success, negative error code otherwise
- */
-int ble_advertising_start(void);
-
-/**
- * @brief Stop advertising
- *
- * @return 0 on success, negative error code otherwise
- */
-int ble_advertising_stop(void);
-
-/**
- * @brief Send data via NUS
- *
- * @param conn Connection to send data to (NULL for all connections)
  * @param data Data buffer to send
  * @param len Length of data
  *
  * @return 0 on success, negative error code otherwise
  */
-int ble_nus_send(struct bt_conn *conn, const uint8_t *data, uint16_t len);
+int ble_send_data(const uint8_t *data, uint16_t len);
 
 /**
- * @brief Get current connection state
+ * @brief Get current connection state (simulated based on IPC)
  *
  * @return Current BLE connection state
  */
 enum ble_connection_state ble_get_connection_state(void);
 
 /**
- * @brief Get number of active connections
+ * @brief Check if BLE IPC communication is working
  *
- * @return Number of active BLE connections
+ * @return true if IPC is functional, false otherwise
  */
-uint8_t ble_get_connection_count(void);
+bool ble_is_ipc_ready(void);
 
 /**
- * @brief Disconnect from a specific connection
- *
- * @param conn Connection to disconnect
+ * @brief Send a simple test message to verify IPC communication
  *
  * @return 0 on success, negative error code otherwise
  */
-int ble_disconnect(struct bt_conn *conn);
-
-/**
- * @brief Disconnect from all connections
- *
- * @return 0 on success, negative error code otherwise
- */
-int ble_disconnect_all(void);
+int ble_test_ipc_communication(void);
 
 #ifdef __cplusplus
 }

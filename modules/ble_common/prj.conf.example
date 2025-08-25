@@ -5,46 +5,21 @@
 #
 
 #
-# BLE Common Module Configuration
+# nRF5340 Application Core Configuration
 #
 # This file contains the recommended Kconfig settings for using the
-# ble_common module with nrf_utils and cmd_parser in your Nordic nRF project.
+# ble_common module with nrf_utils and cmd_parser on nRF5340 application core.
+# The network core should be running BLE stack (e.g., nRF BLE SPI example).
 #
 
-# Core Bluetooth Configuration
-CONFIG_BT=y
-CONFIG_BT_PERIPHERAL=y
-CONFIG_BT_DEVICE_NAME="nRF_Utils_Device"
+# Core System Configuration
+CONFIG_MAIN_STACK_SIZE=2048
+CONFIG_SYSTEM_WORKQUEUE_STACK_SIZE=2048
+CONFIG_HEAP_MEM_POOL_SIZE=8192
 
-# Bluetooth LE Configuration
-CONFIG_BT_LE_ADV_EXT=n
-CONFIG_BT_LE_ADV_LEGACY=y
-
-# Connection Configuration
-CONFIG_BT_MAX_CONN=4
-CONFIG_BT_MAX_PAIRED=4
-
-# GATT Configuration
-CONFIG_BT_GATT_SERVICE_CHANGED=y
-CONFIG_BT_GATT_AUTO_DISCOVER_CCC=y
-
-# Security Configuration (optional)
-CONFIG_BT_SMP=y
-CONFIG_BT_SIGNING=y
-CONFIG_BT_BONDABLE=y
-
-# Nordic UART Service Configuration
-CONFIG_BT_NUS=y
-CONFIG_BT_NUS_THREAD_STACK_SIZE=1024
-
-# Settings for persistent storage (optional)
-CONFIG_BT_SETTINGS=y
-CONFIG_FLASH=y
-CONFIG_FLASH_PAGE_LAYOUT=y
-CONFIG_FLASH_MAP=y
-CONFIG_NVS=y
-CONFIG_SETTINGS=y
-CONFIG_SETTINGS_NVS=y
+# IPC Configuration for nRF5340 dual-core communication
+CONFIG_IPC_SERVICE=y
+CONFIG_MBOX=y
 
 # GPIO for LEDs and buttons
 CONFIG_GPIO=y
@@ -58,20 +33,22 @@ CONFIG_SENSOR=y
 CONFIG_TEMP_NRF5=y
 
 # Memory management for command parser
-CONFIG_HEAP_MEM_POOL_SIZE=8192
 CONFIG_SYS_HEAP_RUNTIME_STATS=y
 
-# Logging Configuration (recommended for debugging)
+# Flash and settings (optional, for configuration persistence)
+CONFIG_FLASH=y
+CONFIG_FLASH_PAGE_LAYOUT=y
+CONFIG_FLASH_MAP=y
+CONFIG_NVS=y
+CONFIG_SETTINGS=y
+CONFIG_SETTINGS_NVS=y
+
+# Logging Configuration
 CONFIG_LOG=y
-CONFIG_BT_DEBUG_LOG=y
-CONFIG_BT_CONN_LOG_LEVEL_DBG=y
-CONFIG_BT_GATT_LOG_LEVEL_DBG=y
+CONFIG_LOG_DEFAULT_LEVEL=3
+CONFIG_LOG_MODE_DEFERRED=y
 
-# System Configuration
-CONFIG_SYSTEM_WORKQUEUE_STACK_SIZE=2048
-CONFIG_MAIN_STACK_SIZE=2048
-
-# Additional helpful settings for development
+# System utilities
 CONFIG_ASSERT=y
 CONFIG_DEBUG=y
 CONFIG_DEBUG_INFO=y
@@ -79,3 +56,13 @@ CONFIG_DEBUG_INFO=y
 # Newlib for better printf/string support in command parser
 CONFIG_NEWLIB_LIBC=y
 CONFIG_NEWLIB_LIBC_FLOAT_PRINTF=y
+
+# Power management (optional)
+CONFIG_PM=y
+CONFIG_PM_DEVICE=y
+
+#
+# NOTE: BLE configuration is NOT needed on the application core
+# since BLE stack runs on the network core. Only IPC is required
+# for communication between the cores.
+#

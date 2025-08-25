@@ -1,0 +1,64 @@
+/*
+ * Copyright (c) 2025 Personal NRF Utils
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * Device tree overlay for nRF5340 application core
+ * This configures IPC communication with the network core
+ */
+
+/* 
+ * IPC configuration for communication with network core
+ * The network core should be running BLE stack firmware
+ */
+&ipc0 {
+    status = "okay";
+};
+
+/* 
+ * Ensure the application core has access to required peripherals
+ */
+&adc {
+    status = "okay";
+    #address-cells = <1>;
+    #size-cells = <0>;
+
+    channel@0 {
+        reg = <0>;
+        zephyr,gain = "ADC_GAIN_1_6";
+        zephyr,reference = "ADC_REF_INTERNAL";
+        zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+        zephyr,input-positive = <NRF_SAADC_VDD>;
+        zephyr,resolution = <12>;
+    };
+};
+
+&temp {
+    status = "okay";
+};
+
+/* GPIO for LEDs */
+&gpio0 {
+    status = "okay";
+};
+
+&gpio1 {
+    status = "okay";
+};
+
+/* Flash for settings storage */
+&flash0 {
+    partitions {
+        compatible = "fixed-partitions";
+        #address-cells = <1>;
+        #size-cells = <1>;
+
+        /* Reserve space for settings */
+        storage_partition: partition@fa000 {
+            label = "storage";
+            reg = <0x000fa000 0x00006000>;
+        };
+    };
+};

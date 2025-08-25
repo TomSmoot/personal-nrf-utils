@@ -21,65 +21,57 @@ static bool auto_status_enabled = true;
 /* BLE event callbacks */
 static void on_ble_ready(void)
 {
-    LOG_INF("BLE stack initialized and ready");
+    LOG_INF("BLE IPC communication ready");
     gpio_pin_set_dt(&led, 1);
     
-    /* Send welcome message after a short delay */
-    k_sleep(K_MSEC(500));
-    char welcome[] = "\n=== nRF Utils Test Device ===\n"
-                    "Type 'help' for available commands\n"
-                    "Auto status updates: enabled\n\n";
-    
-    if (ble_get_connection_state() == BLE_CONNECTED) {
-        ble_nus_send(NULL, (uint8_t *)welcome, strlen(welcome));
+    /* Test IPC communication */
+    int ret = ble_test_ipc_communication();
+    if (ret != 0) {
+        LOG_WRN("IPC test failed (err %d)", ret);
     }
 }
 
-static void on_connected(struct bt_conn *conn, uint8_t conn_err)
+static void on_connected(void)
 {
-    if (conn_err) {
-        LOG_ERR("Connection failed (err %u)", conn_err);
-        return;
-    }
-    
-    LOG_INF("Device connected");
+    LOG_INF("BLE device connected via network core");
     gpio_pin_toggle_dt(&led);
     
     /* Send welcome message */
-    k_sleep(K_MSEC(1000)); /* Give client time to setup notifications */
-    char welcome[] = "\n=== nRF Utils Test Device Connected ===\n"
+    k_sleep(K_MSEC(1000)); /* Give time for connection setup */
+    char welcome[] = "\n=== nRF5340 Utils Device Connected ===\n"
+                    "Application Core + Network Core BLE\n"
                     "Type 'help' for available commands\n\n";
-    ble_nus_send(conn, (uint8_t *)welcome, strlen(welcome));
+    ble_send_data((uint8_t *)welcome, strlen(welcome));
 }
 
-static void on_disconnected(struct bt_conn *conn, uint8_t reason)
+static void on_disconnected(uint8_t reason)
 {
-    LOG_INF("Device disconnected (reason %u)", reason);
+    LOG_INF("BLE device disconnected (reason %u)", reason);
     gpio_pin_set_dt(&led, 1);
 }
 
-static void on_data_received(struct bt_conn *conn, const uint8_t *data, uint16_t len)
+static void on_data_received(const uint8_t *data, uint16_t len)
 {
-    LOG_INF("Received %u bytes via NUS", len);
+    LOG_INF("Received %u bytes via BLE IPC", len);
     LOG_HEXDUMP_DBG(data, len, "RX Data:");
     
-    /* Process as commands */
-    cmd_parser_process(conn, data, len);
+    /* Process as commands - conn parameter not needed for nRF5340 */
+    cmd_parser_process(NULL, data, len);
 }
 
 /* BLE configuration */
 static const struct ble_init_config ble_config = {
-    .device_name = "nRF_Utils_Device",
+    .device_name = "nRF5340_Utils",
     .adv_interval_ms = 100,
     .connectable = true,
-    .enable_nus = true,
+    .enable_uart_service = true,
 };
 
 static const struct ble_event_callbacks ble_callbacks = {
     .ready = on_ble_ready,
     .connected = on_connected,
     .disconnected = on_disconnected,
-    .nus_data_received = on_data_received,
+    .data_received = on_data_received,
 };
 
 int main(void)
@@ -88,7 +80,7 @@ int main(void)
     uint32_t counter = 0;
     char status_msg[256];
 
-    LOG_INF("Starting nRF Utils Test Application");
+    LOG_INF("Starting nRF5340 Utils Application Core");
 
     /* Initialize LED */
     if (!gpio_is_ready_dt(&led)) {
@@ -151,11 +143,11 @@ int main(void)
             
             pos += snprintf(status_msg + pos, sizeof(status_msg) - pos, "\n");
             
-            int ret = ble_nus_send(NULL, (uint8_t *)status_msg, strlen(status_msg));
+            int ret = ble_send_data((uint8_t *)status_msg, strlen(status_msg));
             if (ret == 0) {
-                LOG_DBG("Sent auto status update");
+                LOG_DBG("Sent auto status update via IPC");
             } else {
-                LOG_WRN("Failed to send auto status (err %d)", ret);
+                LOG_WRN("Failed to send auto status via IPC (err %d)", ret);
             }
         }
         
